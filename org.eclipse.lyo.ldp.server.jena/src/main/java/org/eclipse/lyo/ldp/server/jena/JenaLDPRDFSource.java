@@ -107,6 +107,7 @@ public class JenaLDPRDFSource extends LDPRDFSource {
 		checkIfMatch(requestHeaders, before);
 
 		for (String property : getReadOnlyProperties()) {
+		    System.out.println("UPDATING PROPERTY "+property);
 			failIfReadOnlyPropertyChanged(before, model, property);
 		}
 

@@ -4,18 +4,18 @@
  *	All rights reserved. This program and the accompanying materials
  *	are made available under the terms of the Eclipse Public License v1.0
  *	and Eclipse Distribution License v. 1.0 which accompanies this distribution.
- *	
+ *
  *	The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
  *	and the Eclipse Distribution License is available at
  *	http://www.eclipse.org/org/documents/edl-v10.php.
- *	
+ *
  *	Contributors:
- *	
+ *
  *	   Frank Budinsky - initial API and implementation
  *	   Steve Speicher - initial API and implementation
  *	   Samuel Padgett - initial API and implementation
  *	   Steve Speicher - updates for recent LDP spec changes
- *	   Steve Speicher - make root URI configurable 
+ *	   Steve Speicher - make root URI configurable
  *	   Samuel Padgett - add LDP-RS Link header to responses
  *	   Samuel Padgett - allow implementations to set response headers using Response
  *	   Samuel Padgett - add Accept-Patch header constants
@@ -78,66 +78,66 @@ public abstract class LDPService {
 	 * <li>{@code <http://www.w3.org/ns/ldp#Resource>;rel=type}</li>
 	 * <li>{@code <http://www.w3.org/ns/ldp#Resource>; rel="type http://example.net/relation/other"}</li>
 	 * </ul>
-	 * 
+	 *
 	 * @see #hasResourceTypeHeader(HttpHeaders)
 	 */
 	public static final String LINK_TYPE_RESOURCE_REGEX
-                = "<http://www\\.w3\\.org/ns/ldp#Resource\\>\\s*;\\s*rel\\s*=\\s*((\"\\s*([^\"]+\\s+)*type(\\s+[^\"]+)*\\s*\")|\\s*type)([\\s;,]+.*|\\z)";
-	
+		= "<http://www\\.w3\\.org/ns/ldp#Resource\\>\\s*;\\s*rel\\s*=\\s*((\"\\s*([^\"]+\\s+)*type(\\s+[^\"]+)*\\s*\")|\\s*type)([\\s;,]+.*|\\z)";
+
 	@Context HttpServletRequest fRequest;
 	@Context HttpHeaders fRequestHeaders;
 	@Context UriInfo fRequestUrl;
 	@Context ServletContext context;
 	@PathParam("path") String fPath;
-	
+
 	public static final String ROOT_APP_URL = System.getProperty(LDP_ROOTURI, "http://localhost:8080/ldp");
 	public static final String ROOT_PATH_SEG = System.getProperty(LDP_CONTENT_SEGMENT, "/resources/");
 	public static final String ROOT_CONTAINER_URL = ROOT_APP_URL + ROOT_PATH_SEG;
 	//public static final String FILE_DIR = System.getProperty(LDP_FILE_DIR, getCon);
 	private static String fPublicURI = ROOT_APP_URL;
-	
+
 	public static final String[] ACCEPT_PATCH_CONTENT_TYPES = {
-			LDPConstants.CT_APPLICATION_RDFXML, 
+			LDPConstants.CT_APPLICATION_RDFXML,
 			LDPConstants.CT_TEXT_TURTLE,
 			LDPConstants.CT_APPLICATION_XTURTLE,
 			LDPConstants.CT_APPLICATION_JSON,
 			LDPConstants.CT_APPLICATION_LD_JSON };
-	
+
 	public static final String ACCEPT_POST_CONTENT_TYPES_STR = "*/*";
 	public static final String ACCEPT_PATCH_CONTENT_TYPES_STR = encodeAccept(ACCEPT_PATCH_CONTENT_TYPES);
-	
+
 	protected abstract void resetContainer();
 	protected abstract ILDPContainer getRootContainer();
 	protected abstract LDPResourceManager getResourceManger();
-	
+
 	public LDPService() { }
-	
+
 	/**
 	 * @return Does NOT include segment for container, use getRootContainer().getURI() for that.
 	 */
 	protected String getPublicURI() { return fPublicURI ; }
-	
+
 	@GET
 	@Produces(LDPConstants.CT_TEXT_TURTLE)
-	public Response getTextTurtle() {	
+	public Response getTextTurtle() {
 		return getResource(LDPConstants.CT_TEXT_TURTLE);
 	}
-	
+
 	@GET
 	@Produces(LDPConstants.CT_APPLICATION_XTURTLE)
-	public Response getApplicationXTurtle() {	
+	public Response getApplicationXTurtle() {
 		return getResource(LDPConstants.CT_APPLICATION_XTURTLE);
 	}
 
 	@GET
 	@Produces({ LDPConstants.CT_APPLICATION_JSON, LDPConstants.CT_APPLICATION_LD_JSON })
-	public Response getJSON() { 
+	public Response getJSON() {
 		return getResource(LDPConstants.CT_APPLICATION_JSON);
 	}
 
 	@GET
 	@Produces(LDPConstants.CT_APPLICATION_RDFXML)
-	public Response getApplicationRDFXML() {	
+	public Response getApplicationRDFXML() {
 		return getResource(LDPConstants.CT_APPLICATION_RDFXML);
 	}
 
@@ -154,13 +154,14 @@ public abstract class LDPService {
 		if (ldpR == null) {
 			return Response.status(Status.NOT_FOUND).build();
 		}
-		
+
 		return ldpR.options();
 	}
- 
+
 	@PUT
-	@Consumes({ LDPConstants.CT_APPLICATION_RDFXML, LDPConstants.CT_TEXT_TURTLE, LDPConstants.CT_APPLICATION_XTURTLE })
+	@Consumes({ LDPConstants.CT_APPLICATION_RDFXML, LDPConstants.CT_TEXT_TURTLE, LDPConstants.CT_APPLICATION_XTURTLE, LDPConstants.CT_APPLICATION_LD_JSON })
 	public Response putRDFSource(InputStream content) {
+		System.out.println("PUT RDF RESOURCE!!!");
 		// Set the initial container representation. Should only be called once.
 		// May be invoked when query params are used, like ?_admin or ?_meta.
 		String resourceURI = getConanicalURL(fRequestUrl.getRequestUri());
@@ -173,7 +174,7 @@ public abstract class LDPService {
 		}
 		return Response.status((created) ? Status.CREATED : Status.NO_CONTENT).build();
 	}
-	
+
 	@PUT
 	@Consumes("*/*")
 	public Response putNonRDFSource(InputStream content) {
@@ -181,13 +182,14 @@ public abstract class LDPService {
 		ILDPResource ldpR = getResourceManger().get(resourceURI);
 		if (ldpR == null) return Response.status(Status.NOT_FOUND).build();
 		// We don't allow changing an LDP-RS to an LDP-NR.
+		System.out.println("** FIRST CHECK");
 		if (!(ldpR instanceof LDPNonRDFSource)) return Response.status(Status.CONFLICT).build();
-
+		System.out.println("** DONE!");
 		ldpR.putUpdate(content, stripCharset(fRequestHeaders.getMediaType().toString()), getCurrentUser(), fRequestHeaders);
 
 		return Response.status(Status.NO_CONTENT).build();
 	}
-	
+
 	@POST
 	@Consumes({ LDPConstants.CT_APPLICATION_RDFXML, LDPConstants.CT_TEXT_TURTLE, LDPConstants.CT_APPLICATION_XTURTLE, LDPConstants.CT_APPLICATION_JSON, LDPConstants.CT_APPLICATION_LD_JSON })
 	public Response post(@HeaderParam(LDPConstants.HDR_SLUG) final String slug, final InputStream content) {
@@ -241,12 +243,12 @@ public abstract class LDPService {
 		ILDPResource ldpR = getResourceManger().get(getConanicalURL(fRequestUrl.getRequestUri()));
 		if (ldpR == null) throw new WebApplicationException(Status.NOT_FOUND);
 		else if (!(ldpR instanceof ILDPContainer)) throw new WebApplicationException(Status.BAD_REQUEST);  // TODO: Provide some details in response
-		
+
 		//	 else follow model for POST against container
 		ILDPContainer ldpC = (ILDPContainer)ldpR;
 		return ldpC;
 	}
-	
+
 	@POST
 	@Path("{id:.*}")
 	@Consumes(LDPConstants.CT_APPLICATION_SPARQLQUERY)
@@ -260,12 +262,12 @@ public abstract class LDPService {
 						ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 						IOUtils.copy(content, byteStream);
 						getRootContainer().query(output, byteStream.toString(), LDPConstants.CT_APPLICATION_SPARQLRESULTSJSON);
-					} catch (Exception e) { 
-						throw new WebApplicationException(Response.status(Status.BAD_REQUEST).build()); 
+					} catch (Exception e) {
+						throw new WebApplicationException(Response.status(Status.BAD_REQUEST).build());
 					}
 				}
 			};
-		else 
+		else
 			return null;
 	}
 
@@ -277,7 +279,7 @@ public abstract class LDPService {
 	public Response postNonRDFSource(@HeaderParam(LDPConstants.HDR_SLUG) String slug, InputStream content) {
 		return getRequestContainer().postNonRDFSource(content, stripCharset(fRequestHeaders.getMediaType().toString()), getCurrentUser(), slug);
 	}
- 
+
 	@DELETE
 	public Response delete() {
 		String uri = getConanicalURL(fRequestUrl.getRequestUri());
@@ -287,17 +289,17 @@ public abstract class LDPService {
 		ldpR.delete();
 		return Response.status(Status.NO_CONTENT).build();
 	}
-	
+
 	@PATCH
 	@Path("id")
-	@Consumes(LDPConstants.CT_TEXT_TURTLE)	  
+	@Consumes(LDPConstants.CT_TEXT_TURTLE)
 	public Response patch(final InputStream content, @PathParam("id") String id) {
 		getRootContainer().patch(getConanicalURL(fRequestUrl.getRequestUri()), content, stripCharset(fRequestHeaders.getMediaType().toString()), null);
 
 		return Response.status(Status.OK).build();
 	}
-	
-	private Response getResource(final String type) {	
+
+	private Response getResource(final String type) {
 		String resourceURI = getConanicalURL(fRequestUrl.getRequestUri());
 		ILDPResource ldpR = getResourceManger().get(resourceURI);
 		if (ldpR == null) return Response.status(Status.NOT_FOUND).build();
@@ -307,10 +309,10 @@ public abstract class LDPService {
 	/**
 	 * Gets the <code>include</code> and <code>omit</code> values in the
 	 * HTTP <code>Prefer</code> header for this request.
-	 * 
+	 *
 	 * @param include a list of include values to populate
 	 * @param omit a list of omit values to populate
-	 * 
+	 *
 	 * @see <a href="http://tools.ietf.org/html/draft-snell-http-prefer-12">Prefer Header for HTTP</a>
 	 */
 	protected MultivaluedMap<String, String> getPreferencesFromRequest() {
@@ -340,7 +342,7 @@ public abstract class LDPService {
 				}
 			}
 		}
- 
+
 		return preferencesMap;
 	}
 
@@ -350,12 +352,12 @@ public abstract class LDPService {
 			return contentType;
 		return contentType.substring(0, i);
 	}
-	
+
 	String getConanicalURL(URI url) {
 		// TODO: Map request URL to the URL prefix that is stored in repo
 		return url.toString();
 	}
-	
+
 	public static String encodeAccept(String[] contentTypes) {
 		String result = "";
 		for (int i = 0; i < contentTypes.length; i++) {
@@ -364,14 +366,14 @@ public abstract class LDPService {
 		}
 		return result;
 	}
-	
+
 	public static String parseSlug(String header) {
 		return header;
 	}
-	
+
 	/**
 	 * Make sure path segment, begins and ends with /
-	*/		
+	*/
 	static public String wrapPathSeg(String pathSeg) {
 		String str;
 		if (pathSeg.startsWith("//")) {
@@ -382,7 +384,7 @@ public abstract class LDPService {
 			str = pathSeg.substring(i-1);
 		} else if (pathSeg.charAt(0)=='/')
 			str = pathSeg;
-		else 
+		else
 			str = "/"+pathSeg;
 
 		if (str.endsWith("//"))	 {
@@ -395,9 +397,8 @@ public abstract class LDPService {
 			str = str +"/";
 		} else if (str.length() == 1)
 			str = "";
-		
+
 		return str;
 	}
-	
-}
 
+}

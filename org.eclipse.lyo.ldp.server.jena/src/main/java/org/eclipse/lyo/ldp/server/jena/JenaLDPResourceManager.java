@@ -4,13 +4,13 @@
  *	All rights reserved. This program and the accompanying materials
  *	are made available under the terms of the Eclipse Public License v1.0
  *	and Eclipse Distribution License v. 1.0 which accompanies this distribution.
- *	
+ *
  *	The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
  *	and the Eclipse Distribution License is available at
  *	http://www.eclipse.org/org/documents/edl-v10.php.
- *	
+ *
  *	Contributors:
- *	
+ *
  *	   Steve Speicher - Updates for recent LDP spec changes
  *	   Samuel Padgett - Look for all LDP container types
  *	   Samuel Padgett - use TDB transactions
@@ -50,15 +50,18 @@ public class JenaLDPResourceManager implements LDPResourceManager {
 	public ILDPResource get(String resourceURI) {
 		gs.readLock();
 		try {
+			System.out.println("CHECKING RES "+resourceURI);
 			Model graph = gs.getGraph(resourceURI);
 			if (graph == null) {
 				if (JenaLDPNonRdfSource.isLDPNR(resourceURI)) {
+				    System.out.println("** NO LDPRES");
 					return new JenaLDPNonRdfSource(resourceURI, gs);
 				}
 				return null;
 			}
 			Resource r = graph.getResource(resourceURI);
 			if (!isResourceInteractionModel(resourceURI)) {
+				System.out.println("** NO CONTAINER");
 				if (r.hasProperty(RDF.type, LDP.DirectContainer)) {
 					return new JenaLDPDirectContainer(resourceURI, gs);
 				} else if (r.hasProperty(RDF.type, LDP.BasicContainer)) {
@@ -68,6 +71,7 @@ public class JenaLDPResourceManager implements LDPResourceManager {
 					System.err.println("Received type of ldp:Container but treating as ldp:RDFSource.");
 				}
 			}
+			System.out.println("** NO LDPRES");
 			return new JenaLDPRDFSource(resourceURI, gs);
 		} finally {
 			gs.end();
@@ -77,7 +81,7 @@ public class JenaLDPResourceManager implements LDPResourceManager {
 	public static String mintConfigURI(String uri) {
 		return	uri + CONFIG_PARAM;
 	}
-	
+
 	public static String mintAssociatedRDFSourceURI(String uri) {
 		return	uri + ASSOCIATED_LDP_RS_PARAM;
 	}
@@ -93,33 +97,33 @@ public class JenaLDPResourceManager implements LDPResourceManager {
 	public static boolean isAssociatedRDFSource(String uri) {
 		return uri.endsWith(ASSOCIATED_LDP_RS_PARAM);
 	}
-	
+
 	/**
 	 * Is this resource a companion of another resource? These resources are
 	 * managed specially. For instance, they probably should not be deleted
 	 * without deleting the other resource.
-	 * 
+	 *
 	 * @param uri the resource URI
 	 * @return true iff this is a companion resource to another resource (such as a config graph)
 	 */
 	public static boolean isCompanion(String uri) {
 		return isConfigURI(uri) || isAssociatedRDFSource(uri);
 	}
-	
+
 	public static boolean isContainer(Resource r) {
 		return r.hasProperty(RDF.type, LDP.Container) ||
 				r.hasProperty(RDF.type, LDP.BasicContainer) ||
 				r.hasProperty(RDF.type, LDP.DirectContainer) ||
 				r.hasProperty(RDF.type, LDP.IndirectContainer);
 	}
-	
+
 	public boolean isResourceInteractionModel(String resourceURI) {
 		Model graph = gs.getGraph(mintConfigURI(resourceURI));
 		if (graph == null) return false;
-		
+
 		Resource r = graph.getResource(resourceURI);
 		if (r == null) return false;
-		
+
 		return r.hasLiteral(Lyo.isResourceInteractionModel, true);
 	}
 }

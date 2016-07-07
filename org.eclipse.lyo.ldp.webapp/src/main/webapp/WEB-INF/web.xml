@@ -6,8 +6,8 @@
     <servlet-class>org.apache.cxf.jaxrs.servlet.CXFNonSpringJaxrsServlet</servlet-class>
     <!-- <servlet-class>org.apache.wink.server.internal.servlet.RestServlet</servlet-class> -->
     <init-param>
-        <param-name>javax.ws.rs.Application</param-name>
-        <param-value>org.eclipse.lyo.ldp.webapp.service.LDPApplication</param-value>
+	<param-name>javax.ws.rs.Application</param-name>
+	<param-value>org.eclipse.lyo.ldp.webapp.service.LDPApplication</param-value>
     </init-param>
     <load-on-startup>1</load-on-startup>
 </servlet>
@@ -22,23 +22,4 @@
     <extension>ttl</extension>
     <mime-type>text/turtle</mime-type>
 </mime-mapping>
-<security-constraint>
-    <display-name>authorizedUsers</display-name>
-    <web-resource-collection>
-        <web-resource-name>ALL URLs</web-resource-name>
-        <url-pattern>/*</url-pattern>
-    </web-resource-collection>
-    <auth-constraint>
-        <role-name>LDP</role-name>
-    </auth-constraint>
-    <!--user-data-constraint><transport-guarantee>CONFIDENTIAL</transport-guarantee></user-data-constraint -->
-</security-constraint>
-<login-config>
-    <auth-method>BASIC</auth-method>
-    <realm-name>LDP</realm-name>
-</login-config>
-<security-role>
-    <description>access to the Linked Data Platform</description>
-    <role-name>LDP</role-name>
-</security-role>
 </web-app>
